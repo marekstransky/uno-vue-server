@@ -130,8 +130,7 @@ class RoundImpl implements Round {
   private finished: boolean = false
   private roundScore: number | undefined
   private readonly shuffler: Shuffler<Card>
-  private lastActionTurn: number | undefined // legacy; no longer used for gating
-  // UNO accusation window tracking
+  private lastActionTurn: number | undefined
   private actionCounter: number = 0
   private pendingUno?: { accused: number; actionId: number }
   private preUnoByAction?: { player: number; actionId: number }
@@ -148,7 +147,6 @@ class RoundImpl implements Round {
     if (players.length > 10) {
       throw new Error('At most 10 players are allowed')
     }
-    // normalize dealer to valid range (supports negative or oversized values)
     const normalizedDealer = ((dealer % players.length) + players.length) % players.length
 
     this.players = [...players]
@@ -156,14 +154,12 @@ class RoundImpl implements Round {
     this.currentPlayer = (normalizedDealer + 1) % players.length
     this.shuffler = shuffler
 
-    // Create deck and shuffle
     const deck = createInitialDeck()
-    const deckImpl = deck as any // Cast to access internal cards
+    const deckImpl = deck as any
     const cards = deckImpl.cards
     shuffler(cards)
     this.drawPileImpl = new DeckImpl(cards)
 
-    // Deal cards block-wise per player: first 7 to player 0, next 7 to player 1, etc.
     this.playerHands = new Array(players.length).fill(null).map(() => [])
     for (let p = 0; p < players.length; p++) {
       for (let i = 0; i < cardsPerPlayer; i++) {
@@ -172,13 +168,11 @@ class RoundImpl implements Round {
       }
     }
 
-    // Initialize discard pile with reshuffling for wild cards
     this.discardPileImpl = new DiscardPileImpl()
     let topCard: Card | undefined
     do {
       topCard = this.drawPileImpl.deal()
       if (topCard && (topCard.type === 'WILD' || topCard.type === 'WILD DRAW')) {
-        // Put wild card back and reshuffle
         this.drawPileImpl.add(topCard)
         const allCards = this.drawPileImpl.getAllCards()
         shuffler(allCards)
@@ -189,7 +183,6 @@ class RoundImpl implements Round {
     if (topCard) {
       this.discardPileImpl.add(topCard)
       
-      // Handle special starting cards
       if (topCard.type === 'REVERSE') {
         this.direction = -1
         this.currentPlayer = (normalizedDealer - 1 + players.length) % players.length
@@ -242,22 +235,18 @@ class RoundImpl implements Round {
 
     if (!topCard) return false
 
-    // Wild cards can always be played
     if (card.type === 'WILD') return true
 
-    // Wild Draw 4 can only be played if no other cards match the current color
     if (card.type === 'WILD DRAW') {
       return !hand.some((c, i) => i !== cardIndex && this.cardMatchesColor(c, currentColor))
     }
 
-    // Check if card matches by color or type/number
     if ('color' in card && currentColor && card.color === currentColor) return true
     if (card.type === 'NUMBERED' && topCard.type === 'NUMBERED') {
       return card.number === topCard.number || card.color === topCard.color
     }
     if ((card.type === 'SKIP' || card.type === 'REVERSE' || card.type === 'DRAW')) {
       if (topCard.type === card.type) return true
-      // action cards also playable by matching color
       if ('color' in topCard && card.color === topCard.color) return true
       return false
     }
@@ -283,7 +272,6 @@ class RoundImpl implements Round {
   }
 
   play(cardIndex: number, color?: Color): Card {
-    // Start of a player's action; close any pending UNO window if someone else acts
     this.startAction(this.currentPlayer)
     if (!this.canPlay(cardIndex)) {
       throw new Error('Illegal play')
@@ -292,7 +280,6 @@ class RoundImpl implements Round {
     const hand = this.playerHands[this.currentPlayer]
     const card = hand.splice(cardIndex, 1)[0]
 
-    // Add to discard pile
     if (card.type === 'WILD' || card.type === 'WILD DRAW') {
       if (!color) {
         throw new Error('Wild card requires color selection')
@@ -305,10 +292,8 @@ class RoundImpl implements Round {
       this.discardPileImpl.add(card)
     }
 
-    // Handle UNO window on penultimate card
     const cur = this.currentPlayer
     if (hand.length === 1) {
-      // If UNO was declared pre-emptively for this action, consume it; else open window
       if (this.preUnoByAction && this.preUnoByAction.player === cur && this.preUnoByAction.actionId === this.actionCounter) {
         this.preUnoByAction = undefined
       } else {
@@ -317,13 +302,10 @@ class RoundImpl implements Round {
     }
     this.lastActionTurn = this.currentPlayer
 
-    // Handle special card effects (must apply even if this was the last card)
     this.handleSpecialCard(card)
 
-    // Move to next player
     this.nextPlayer()
 
-    // If player's hand is empty, finish round now
     if (hand.length === 0) {
       this.finishRound()
       return card
@@ -549,7 +531,7 @@ export function createRound(config: {
   return new RoundImpl(
     config.players,
     config.dealer,
-    config.shuffler || ((cards: Card[]) => {}), // No-op shuffler as default
+    config.shuffler || ((cards: Card[]) => {}),
     config.cardsPerPlayer
   )
 }
@@ -558,7 +540,6 @@ export function createRoundFromMemento(
   memento: any,
   shuffler?: Shuffler<Card>
 ): Round {
-  // Validate memento
   if (!memento.players || memento.players.length < 2) {
     throw new Error('Invalid memento: need at least 2 players')
   }
@@ -583,7 +564,6 @@ export function createRoundFromMemento(
   if (memento.currentColor && !['RED', 'BLUE', 'GREEN', 'YELLOW'].includes(memento.currentColor)) {
     throw new Error('Invalid memento: invalid currentColor')
   }
-  // currentColor consistency: treat first discard element as top
   const mTop = memento.discardPile[0]
   if (mTop) {
     if (mTop.type === 'NUMBERED' || mTop.type === 'SKIP' || mTop.type === 'REVERSE' || mTop.type === 'DRAW') {
@@ -597,7 +577,6 @@ export function createRoundFromMemento(
     }
   }
   
-  // Check for game-ending conditions
   const emptyHands = handsArr.filter((hand: any[]) => hand.length === 0).length
   if (emptyHands > 1) {
     throw new Error('Invalid memento: multiple winners')
@@ -608,7 +587,6 @@ export function createRoundFromMemento(
     throw new Error('Invalid memento: playerInTurn required for unfinished game')
   }
 
-  // Handle different memento formats - normalize to RoundMemento format
   const normalizedMemento: RoundMemento = {
     players: memento.players,
     dealer: memento.dealer,
@@ -620,19 +598,13 @@ export function createRoundFromMemento(
     topCardColor: memento.currentColor
   }
 
-  // Create the round instance directly with the provided state
-  // Use no-op shuffler during construction to avoid extra shuffle calls
   const round = new RoundImpl(normalizedMemento.players, normalizedMemento.dealer, () => {})
-  
-  // Override the internal state with memento data
   const roundImpl = round as any
-  // Set the actual shuffler for future reshuffles
   roundImpl.shuffler = shuffler || (() => {})
   roundImpl.playerHands = normalizedMemento.playerHands.map((hand: Card[]) => [...hand])
   roundImpl.currentPlayer = normalizedMemento.currentPlayer
   roundImpl.direction = normalizedMemento.direction
   
-  // Restore draw pile
   const drawPileCards = normalizedMemento.drawPile.map((cardData: any) => {
     if (cardData.type === 'NUMBERED') {
       return { type: 'NUMBERED' as const, color: cardData.color as Color, number: cardData.number as number }
@@ -644,7 +616,6 @@ export function createRoundFromMemento(
   })
   roundImpl.drawPileImpl = new DeckImpl(drawPileCards)
   
-  // Restore discard pile: memento provides top-first; push bottom to top so top ends last
   roundImpl.discardPileImpl = new DiscardPileImpl()
   for (let i = normalizedMemento.discardPile.length - 1; i >= 0; i--) {
     const cardData = normalizedMemento.discardPile[i]
@@ -652,12 +623,10 @@ export function createRoundFromMemento(
     roundImpl.discardPileImpl.add(card)
   }
   
-  // Set current color if specified
   if (normalizedMemento.topCardColor) {
     roundImpl.discardPileImpl.currentColor = normalizedMemento.topCardColor
   }
   
-  // Check if the round is finished
   if (isFinished) {
     roundImpl.finished = true
     roundImpl.roundScore = roundImpl.calculateScore()

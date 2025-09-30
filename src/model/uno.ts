@@ -201,10 +201,8 @@ export function createGameFromMemento(
     memento.cardsPerPlayer
   )
 
-  // Restore scores
   ;(game as any).scores = [...memento.scores]
 
-  // Restore current round if exists
   if (memento.currentRound) {
     ;(game as any)._currentRound = createRoundFromMemento(memento.currentRound, shuffler)
     ;(game as any).attachRoundHandlers()
