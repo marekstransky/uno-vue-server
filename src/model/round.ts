@@ -1,4 +1,5 @@
 import { Card, Deck, createInitialDeck, Color, createDeckFromMemento } from './deck'
+import { serializeCard, deserializeCard, ACTION_TYPES, WILD_TYPES } from './cards'
 import { Shuffler } from '../utils/random_utils'
 
 export interface DiscardPile {
@@ -73,9 +74,7 @@ class DeckImpl implements Deck {
     shuffler(this.cards)
   }
 
-  toMemento(): any[] {
-    return this.cards.map(card => ({ ...card }))
-  }
+  toMemento(): any[] { return this.cards.map(c => serializeCard(c)) }
 
   getAllCards(): Card[] {
     return [...this.cards]
@@ -386,31 +385,23 @@ class RoundImpl implements Round {
   private reshuffleDiscardPile(): void {
     const discardCards = this.discardPileImpl.toMemento()
     if (discardCards.length <= 1) return
-    const topCardData = discardCards.pop()!
-    const moved: Card[] = discardCards.map(c => this.createCardFromData(c))
+    const topSerialized = discardCards.pop()!
+    const moved: Card[] = discardCards.map(c => deserializeCard(c))
     this.shuffler(moved)
     for (const c of moved) this.drawPileImpl.add(c)
     const prevColor = this.discardPileImpl.getCurrentColor()
     this.discardPileImpl = new DiscardPileImpl()
-    const recreatedTop = this.createCardFromData(topCardData)
-    if (prevColor && recreatedTop.type !== 'WILD' && recreatedTop.type !== 'WILD DRAW') {
-      this.discardPileImpl.add(recreatedTop)
+    const topCard = deserializeCard(topSerialized)
+    if (prevColor && !WILD_TYPES.includes(topCard.type as any)) {
+      this.discardPileImpl.add(topCard)
     } else if (prevColor) {
-      this.discardPileImpl.add(recreatedTop, prevColor)
+      this.discardPileImpl.add(topCard, prevColor)
     } else {
-      this.discardPileImpl.add(recreatedTop)
+      this.discardPileImpl.add(topCard)
     }
   }
 
-  private createCardFromData(cardData: any): Card {
-    if (cardData.type === 'NUMBERED') {
-      return { type: 'NUMBERED', color: cardData.color, number: cardData.number }
-    } else if (['SKIP', 'REVERSE', 'DRAW'].includes(cardData.type)) {
-      return { type: cardData.type, color: cardData.color }
-    } else {
-      return { type: cardData.type }
-    }
-  }
+  private createCardFromData(cardData: any): Card { return deserializeCard(cardData) }
 
   score(): number | undefined {
     return this.roundScore
@@ -496,20 +487,12 @@ class RoundImpl implements Round {
   }
 
   toMemento(): any {
-    const discardBottomToTop = this.discardPileImpl.toMemento()
-    const discardTopFirst = [...discardBottomToTop].reverse()
+  const discardBottomToTop = this.discardPileImpl.toMemento()
+  const discardTopFirst = [...discardBottomToTop].reverse()
     return {
       players: [...this.players],
       hands: this.playerHands.map(hand => [...hand]),
-      drawPile: this.drawPileImpl.toMemento().map(cardData => {
-        if (cardData.type === 'NUMBERED') {
-          return { type: cardData.type as 'NUMBERED', color: cardData.color as Color, number: cardData.number as number }
-        } else if (['SKIP', 'REVERSE', 'DRAW'].includes(cardData.type as string)) {
-          return { type: cardData.type as 'SKIP' | 'REVERSE' | 'DRAW', color: cardData.color as Color }
-        } else {
-          return { type: cardData.type as 'WILD' | 'WILD DRAW' }
-        }
-      }),
+      drawPile: this.drawPileImpl.toMemento().map(cardData => serializeCard(cardData)),
       discardPile: discardTopFirst,
       currentColor: this.discardPileImpl.getCurrentColor(),
       currentDirection: this.direction > 0 ? 'clockwise' : 'counterclockwise',
@@ -605,21 +588,13 @@ export function createRoundFromMemento(
   roundImpl.currentPlayer = normalizedMemento.currentPlayer
   roundImpl.direction = normalizedMemento.direction
   
-  const drawPileCards = normalizedMemento.drawPile.map((cardData: any) => {
-    if (cardData.type === 'NUMBERED') {
-      return { type: 'NUMBERED' as const, color: cardData.color as Color, number: cardData.number as number }
-    } else if (['SKIP', 'REVERSE', 'DRAW'].includes(cardData.type)) {
-      return { type: cardData.type as 'SKIP' | 'REVERSE' | 'DRAW', color: cardData.color as Color }
-    } else {
-      return { type: cardData.type as 'WILD' | 'WILD DRAW' }
-    }
-  })
+  const drawPileCards = normalizedMemento.drawPile.map((cardData: any) => deserializeCard(cardData))
   roundImpl.drawPileImpl = new DeckImpl(drawPileCards)
   
   roundImpl.discardPileImpl = new DiscardPileImpl()
   for (let i = normalizedMemento.discardPile.length - 1; i >= 0; i--) {
     const cardData = normalizedMemento.discardPile[i]
-    const card = roundImpl.createCardFromData(cardData)
+  const card = roundImpl.createCardFromData(cardData)
     roundImpl.discardPileImpl.add(card)
   }
   
