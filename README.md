@@ -132,3 +132,27 @@ uno-oop-ts/
 ## License
 
 ISC
+
+## Type predicates (type guards)
+
+To improve safety and remove unsafe `as` assertions, the model includes explicit type predicate helpers in `cards.ts`:
+
+- `isNumberedCard(card: Card): card is NumberedCard`
+- `isActionCard(card: Card): card is ActionCard`
+- `isWildCard(card: Card): card is WildCard`
+- `isActionType(value: unknown): value is ActionType`
+- `isWildType(value: unknown): value is WildType`
+- `isType(value: unknown): value is Type`
+
+These are used internally (e.g. during serialization, validation, memento reconstruction) and can be used by consumers to narrow unions without unsafe casting:
+
+```ts
+if (isNumberedCard(card)) {
+  // card.number is now available
+  score += card.number
+} else if (isWildCard(card)) {
+  // card has no color until chosen by the player
+}
+```
+
+All existing tests continue to pass, and an additional test suite (`card.predicates.test.ts`) verifies the basic correctness of the predicates.

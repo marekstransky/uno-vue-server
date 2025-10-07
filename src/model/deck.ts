@@ -1,5 +1,5 @@
 import { Shuffler } from '../utils/random_utils'
-import { serializeCard, deserializeCard, ALL_TYPES } from './cards'
+import { serializeCard, deserializeCard, ALL_TYPES, isType, isNumberedCard, isActionCard, isWildCard } from './cards'
 
 export type Color = 'BLUE' | 'GREEN' | 'RED' | 'YELLOW'
 export type Type = 'NUMBERED' | 'SKIP' | 'REVERSE' | 'DRAW' | 'WILD' | 'WILD DRAW'
@@ -60,6 +60,7 @@ class DeckImpl implements Deck {
   }
 
   toMemento(): Record<string, string | number>[] {
+    // serializeCard already returns a precise discriminated union; cast to generic record for memento format
     return this.cards.map(c => serializeCard(c) as unknown as Record<string, string | number>)
   }
 }
@@ -99,17 +100,18 @@ export function createDeckFromMemento(mementoCards: Record<string, string | numb
   const cards: Card[] = []
 
   for (const cardData of mementoCards) {
-    const type = cardData.type as Type
-    if (!ALL_TYPES.includes(type)) {
-      throw new Error(`Invalid card type: ${type}`)
+    const rawType = (cardData as any).type
+    if (!isType(rawType)) {
+      throw new Error(`Invalid card type: ${rawType}`)
     }
-    if (type === 'NUMBERED') {
+    // Narrowing: now rawType is Type
+    if (rawType === 'NUMBERED') {
       if (cardData.color === undefined || cardData.number === undefined) {
         throw new Error('Numbered cards must have color and number')
       }
-    } else if (type === 'SKIP' || type === 'REVERSE' || type === 'DRAW') {
+    } else if (rawType === 'SKIP' || rawType === 'REVERSE' || rawType === 'DRAW') {
       if (cardData.color === undefined) {
-        throw new Error(`${type} cards must have color`)
+        throw new Error(`${rawType} cards must have color`)
       }
     }
     cards.push(deserializeCard(cardData as any))
@@ -119,9 +121,9 @@ export function createDeckFromMemento(mementoCards: Record<string, string | numb
 }
 
 export function hasColor(card: Card, color: Color): boolean {
-  return 'color' in card && card.color === color
+  return !isWildCard(card) && card.color === color
 }
 
 export function hasNumber(card: Card, number: number): boolean {
-  return card.type === 'NUMBERED' && card.number === number
+  return isNumberedCard(card) && card.number === number
 }

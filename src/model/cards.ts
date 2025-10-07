@@ -1,4 +1,4 @@
-import { Card, Color, Type } from './deck'
+import { Card, Color, Type, NumberedCard, ActionCard, WildCard } from './deck'
 
 export const NUMBER_TYPES = ['NUMBERED'] as const
 export const ACTION_TYPES = ['SKIP', 'REVERSE', 'DRAW'] as const
@@ -13,13 +13,18 @@ export interface SerializedActionCard { type: ActionType; color: Color }
 export interface SerializedWildCard { type: WildType }
 export type SerializedCard = SerializedNumberedCard | SerializedActionCard | SerializedWildCard
 
-export function isActionType(t: any): t is ActionType { return ACTION_TYPES.includes(t) }
-export function isWildType(t: any): t is WildType { return WILD_TYPES.includes(t) }
+export function isActionType(t: unknown): t is ActionType { return ACTION_TYPES.includes(t as ActionType) }
+export function isWildType(t: unknown): t is WildType { return WILD_TYPES.includes(t as WildType) }
+export function isType(t: unknown): t is Type { return ALL_TYPES.includes(t as Type) }
+
+export function isNumberedCard(card: Card): card is NumberedCard { return card.type === 'NUMBERED' }
+export function isActionCard(card: Card): card is ActionCard { return card.type === 'SKIP' || card.type === 'REVERSE' || card.type === 'DRAW' }
+export function isWildCard(card: Card): card is WildCard { return card.type === 'WILD' || card.type === 'WILD DRAW' }
 
 export function serializeCard(card: Card): SerializedCard {
-  if (card.type === 'NUMBERED') return { type: 'NUMBERED', color: card.color, number: card.number }
-  if ('color' in card) return { type: card.type as ActionType, color: card.color }
-  return { type: card.type as WildType }
+  if (isNumberedCard(card)) return { type: 'NUMBERED', color: card.color, number: card.number }
+  if (isActionCard(card)) return { type: card.type, color: card.color }
+  return { type: card.type }
 }
 
 export function deserializeCard(data: SerializedCard): Card {

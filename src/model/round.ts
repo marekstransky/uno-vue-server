@@ -1,5 +1,5 @@
 import { Card, Deck, createInitialDeck, Color, createDeckFromMemento } from './deck'
-import { serializeCard, deserializeCard, ACTION_TYPES, WILD_TYPES } from './cards'
+import { serializeCard, deserializeCard, ACTION_TYPES, WILD_TYPES, isWildCard } from './cards'
 import { Shuffler } from '../utils/random_utils'
 
 export interface DiscardPile {
@@ -168,16 +168,16 @@ class RoundImpl implements Round {
     }
 
     this.discardPileImpl = new DiscardPileImpl()
-    let topCard: Card | undefined
+  let topCard: Card | undefined
     do {
       topCard = this.drawPileImpl.deal()
-      if (topCard && (topCard.type === 'WILD' || topCard.type === 'WILD DRAW')) {
+      if (topCard && isWildCard(topCard)) {
         this.drawPileImpl.add(topCard)
         const allCards = this.drawPileImpl.getAllCards()
         shuffler(allCards)
         this.drawPileImpl = new DeckImpl(allCards)
       }
-    } while (topCard && (topCard.type === 'WILD' || topCard.type === 'WILD DRAW'))
+    } while (topCard && isWildCard(topCard))
 
     if (topCard) {
       this.discardPileImpl.add(topCard)
@@ -392,7 +392,7 @@ class RoundImpl implements Round {
     const prevColor = this.discardPileImpl.getCurrentColor()
     this.discardPileImpl = new DiscardPileImpl()
     const topCard = deserializeCard(topSerialized)
-    if (prevColor && !WILD_TYPES.includes(topCard.type as any)) {
+    if (prevColor && !isWildCard(topCard)) {
       this.discardPileImpl.add(topCard)
     } else if (prevColor) {
       this.discardPileImpl.add(topCard, prevColor)
