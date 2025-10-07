@@ -24,6 +24,7 @@ export interface Round {
   draw(): Card
   score(): number | undefined
   catchUnoFailure(args: { accuser: number; accused: number }): boolean
+  toMemento(): RoundStateMemento
   sayUno(playerIndex: number): void
   onEnd(callback: (result: any) => void): void
   hasEnded(): boolean
