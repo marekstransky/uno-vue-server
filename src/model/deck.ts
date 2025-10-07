@@ -103,7 +103,6 @@ export function createDeckFromMemento(mementoCards: Record<string, string | numb
     if (!ALL_TYPES.includes(type)) {
       throw new Error(`Invalid card type: ${type}`)
     }
-    // Basic validation (retain existing semantics)
     if (type === 'NUMBERED') {
       if (cardData.color === undefined || cardData.number === undefined) {
         throw new Error('Numbered cards must have color and number')

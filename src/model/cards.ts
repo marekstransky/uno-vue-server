@@ -1,6 +1,5 @@
 import { Card, Color, Type } from './deck'
 
-// Canonical card type groupings
 export const NUMBER_TYPES = ['NUMBERED'] as const
 export const ACTION_TYPES = ['SKIP', 'REVERSE', 'DRAW'] as const
 export const WILD_TYPES = ['WILD', 'WILD DRAW'] as const
