@@ -1,5 +1,5 @@
 import { Card, Deck, createInitialDeck, Color, createDeckFromMemento } from './deck'
-import { serializeCard, deserializeCard, ACTION_TYPES, WILD_TYPES, isWildCard } from './cards'
+import { serializeCard, deserializeCard, isWildCard } from './cards'
 import { Shuffler } from '../utils/random_utils'
 
 export interface DiscardPile {
@@ -24,7 +24,6 @@ export interface Round {
   draw(): Card
   score(): number | undefined
   catchUnoFailure(args: { accuser: number; accused: number }): boolean
-  toMemento(): any
   sayUno(playerIndex: number): void
   onEnd(callback: (result: any) => void): void
   hasEnded(): boolean
@@ -40,6 +39,17 @@ interface RoundMemento {
   currentPlayer: number
   direction: number
   topCardColor: Color | undefined
+}
+
+export type RoundStateMemento = {
+  players: string[]
+  hands: Card[][]
+  drawPile: any[]
+  discardPile: any[]
+  currentColor: Color | undefined
+  currentDirection: 'clockwise' | 'counterclockwise'
+  dealer: number
+  playerInTurn: number | undefined
 }
 
 class DeckImpl implements Deck {
@@ -492,7 +502,7 @@ class RoundImpl implements Round {
     return {
       players: [...this.players],
       hands: this.playerHands.map(hand => [...hand]),
-      drawPile: this.drawPileImpl.toMemento().map(cardData => serializeCard(cardData)),
+      drawPile: this.drawPileImpl.toMemento(),
       discardPile: discardTopFirst,
       currentColor: this.discardPileImpl.getCurrentColor(),
       currentDirection: this.direction > 0 ? 'clockwise' : 'counterclockwise',
