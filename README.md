@@ -1,158 +1,37 @@
-# UNO OOP (TypeScript)
+# UNO Against Bots
 
-A small object‑oriented implementation of the UNO card game written in TypeScript with a functional flavor and full Jest test suite.
+Play a full Uno round against a squad of browser bots. The UI is built with Vue 3 and Pinia, while the game rules come from a TypeScript engine that is shared with the Jest test suite.
 
-## What’s inside
+## Highlights
 
-- Core game model in `src/model`:
-  - `deck.ts` – card types, deck factory, and helpers
-  - `round.ts` – round flow (play, draw, UNO, scoring, mementos)
-  - `uno.ts` – multi‑round game orchestration with target score and mementos
-- Deterministic randomness injection via `src/utils/random_utils.ts` (Randomizer, Shuffler)
-- Tests in `__test__` covering deck creation, round mechanics, UNO rules, memento serialization, and full game flow
-- Simple toolchain: TypeScript + Jest + Babel preset for TS
+- Vue 3 + Vite front end with setup, match, and results views (`src/views`).
+- Bot opponents run inside a Web Worker (`src/workers/bot.worker.ts`) and choose cards with a light-weight heuristic.
+- Core Uno engine lives in plain TypeScript (`src/model`) so the same logic powers tests and the UI.
+- Pinia store (`src/stores/matchStore.ts`) keeps the table setup and round summary in sync across routes.
+- Jest tests in `__test__` cover deck creation, round flow, UNO calls, and memento restore.
 
-## Getting started
+## Getting Started
 
-Prerequisites:
-- Node.js 18+ and npm
+1. Install Node.js 18 or newer.
+2. Install dependencies: `npm install`
+3. Start the dev server: `npm run dev` (open the printed URL, usually `http://localhost:5173`).
+4. Run the Jest suite: `npm test`
+5. Create a production build: `npm run build`; preview it with `npm run preview`.
 
-Install dependencies:
+## Game Flow
 
-```bash
-npm install
-```
+- `SetupView.vue` lets you name yourself, pick bot rivals, and choose cards per player.
+- `GameView.vue` renders the round, human hand, bot statuses, event log, and UNO catch window.
+- `ResultView.vue` shows round points and remaining cards, with quick rematch or new setup options.
+- Bot personalities (chance to forget or catch UNO) are generated in the setup view and passed through the Pinia store.
 
-Run tests:
+## Under the Hood
 
-```bash
-npm test
-```
-
-Jest is configured to ignore `dist` and runs against the TypeScript sources using Babel.
-
-## Usage overview
-
-This project exposes an in‑memory model (no UI). The main entrypoints are factory functions:
-
-- `createInitialDeck()` and `createDeckFromMemento(memento)` in `deck.ts`
-- `createRound({ players, dealer, shuffler, cardsPerPlayer })` and `createRoundFromMemento(memento, shuffler)` in `round.ts`
-- `createGame({ players, targetScore, randomizer, shuffler, cardsPerPlayer })` and `createGameFromMemento(memento, randomizer, shuffler)` in `uno.ts`
-
-Randomness is injected for testability:
-- `Randomizer: (bound: number) => number` – used to pick the next dealer
-- `Shuffler<T>: (items: T[]) => void` – used to shuffle the deck
-
-Default helpers are provided in `random_utils.ts`:
-- `standardRandomizer` and `standardShuffler`
-
-### Minimal example (Node)
-
-```ts
-import { createGame } from './src/model/uno'
-import { standardRandomizer, standardShuffler } from './src/utils/random_utils'
-
-const game = createGame({
-  players: ['Alice', 'Bob', 'Cara'],
-  targetScore: 200,
-  randomizer: standardRandomizer,
-  shuffler: standardShuffler,
-  cardsPerPlayer: 7,
-})
-
-const round = game.currentRound()!
-
-// Inspect current player and possible actions
-console.log('In turn:', round.playerInTurn())
-console.log('Can play any?', round.canPlayAny())
-
-// Play the first playable card
-const hand = round.playerHand(round.playerInTurn()!)
-const idx = hand.findIndex((_, i) => round.canPlay(i))
-if (idx >= 0) {
-  const played = round.play(idx /*, color if WILD */)
-  console.log('Played:', played)
-} else if (round.canDraw()) {
-  const drawn = round.draw()
-  console.log('Drew:', drawn)
-}
-
-// Serialize/restore
-const gameMemento = game.toMemento()
-// later: createGameFromMemento(gameMemento, standardRandomizer, standardShuffler)
-```
-
-Notes:
-- When playing a `WILD` or `WILD DRAW` you must provide a color argument.
-- `Round.sayUno(playerIndex)` and `Round.catchUnoFailure({ accuser, accused })` implement the UNO call/punish window.
-- A round ends immediately when someone plays the last card; scoring then adds up the opponents’ hands.
-
-## Project scripts
-
-- `npm test` – run all Jest tests
-
-If you want to compile TypeScript to JavaScript, add a build step (not required for tests):
-
-```json
-{
-  "scripts": {
-    "build": "tsc -p ."
-  }
-}
-```
-
-Then run:
-
-```bash
-npm run build
-```
-
-The output directory is configured as `dist/` in `tsconfig.json`.
-
-## Folder structure
-
-```
-uno-oop-ts/
-├─ src/
-│  ├─ model/
-│  │  ├─ deck.ts
-│  │  ├─ round.ts
-│  │  └─ uno.ts
-│  └─ utils/
-│     └─ random_utils.ts
-├─ __test__/
-│  ├─ model/
-│  └─ utils/
-├─ jest.config.js
-├─ babel.config.js
-├─ tsconfig.json
-└─ package.json
-```
+- UNO card types, rounds, and multi-round helpers sit in `src/model` (`deck.ts`, `round.ts`, `uno.ts`, `cards.ts`).
+- Randomness is injected via the shuffler/randomizer helpers in `src/utils/random_utils.ts` for deterministic tests.
+- `src/bots` defines the message protocol and `BotController` that proxies calls to the worker.
+- Styles are kept in `src/styles/global.css` and component-scoped blocks (see `src/components/UnoCard.vue`).
 
 ## License
 
 ISC
-
-## Type predicates (type guards)
-
-To improve safety and remove unsafe `as` assertions, the model includes explicit type predicate helpers in `cards.ts`:
-
-- `isNumberedCard(card: Card): card is NumberedCard`
-- `isActionCard(card: Card): card is ActionCard`
-- `isWildCard(card: Card): card is WildCard`
-- `isActionType(value: unknown): value is ActionType`
-- `isWildType(value: unknown): value is WildType`
-- `isType(value: unknown): value is Type`
-
-These are used internally (e.g. during serialization, validation, memento reconstruction) and can be used by consumers to narrow unions without unsafe casting:
-
-```ts
-if (isNumberedCard(card)) {
-  // card.number is now available
-  score += card.number
-} else if (isWildCard(card)) {
-  // card has no color until chosen by the player
-}
-```
-
-All existing tests continue to pass, and an additional test suite (`card.predicates.test.ts`) verifies the basic correctness of the predicates.
