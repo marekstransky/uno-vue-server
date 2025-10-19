@@ -25,7 +25,7 @@ export interface GameMemento {
     currentColor?: Color
     currentDirection: 'clockwise' | 'counterclockwise'
     dealer: number
-    playerInTurn: number
+    playerInTurn?: number
   }
 }
 
