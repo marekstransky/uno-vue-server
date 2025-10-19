@@ -1,30 +1,36 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
-const SetupView = () => import('@/views/SetupView.vue')
-const GameView = () => import('@/views/GameView.vue')
-const ResultView = () => import('@/views/ResultView.vue')
+const LobbyView = () => import('@/views/LobbyView.vue')
+const GameRoomView = () => import('@/views/GameRoomView.vue')
+const AuthView = () => import('@/views/AuthView.vue')
 
 export const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'setup',
-      component: SetupView
+      redirect: '/lobby'
     },
     {
-      path: '/play',
+      path: '/lobby',
+      name: 'lobby',
+      component: LobbyView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/game/:id',
       name: 'game',
-      component: GameView
+      component: GameRoomView,
+      meta: { requiresAuth: true }
     },
     {
-      path: '/result',
-      name: 'result',
-      component: ResultView
+      path: '/auth',
+      name: 'auth',
+      component: AuthView
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/'
+      redirect: '/lobby'
     }
   ]
 })

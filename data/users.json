@@ -1,0 +1,35 @@
+[
+  {
+    "id": "57f1022f-a8fe-4e63-8234-358200732032",
+    "username": "Helo",
+    "passwordHash": "$2a$10$VLnCNHX.aqDvi15z8mkLvuocqwDbhKdWqR/CcPw08LE/BLFDgbFLq",
+    "createdAt": "2025-10-19T18:40:36.202Z",
+    "stats": {
+      "gamesPlayed": 0,
+      "gamesWon": 0,
+      "totalScore": 0
+    }
+  },
+  {
+    "id": "8f98dc30-d540-43bb-81b5-f8dd2247ec4b",
+    "username": "Marek",
+    "passwordHash": "$2a$10$CC490ogFDcETJG/Zk05ZhOZvXsYoPAxgfIA/4Buh/XWxoz73LNPCG",
+    "createdAt": "2025-10-19T20:08:07.923Z",
+    "stats": {
+      "gamesPlayed": 1,
+      "gamesWon": 0,
+      "totalScore": 0
+    }
+  },
+  {
+    "id": "33fdc7cc-39a0-49f4-a6d9-d76a4a41a660",
+    "username": "Jarko",
+    "passwordHash": "$2a$10$kgIPLuE1Z32rXq3tf6DPGufRQPaxCRVg/0UoPqcS/ffc1sX9zOsbq",
+    "createdAt": "2025-10-19T20:08:33.944Z",
+    "stats": {
+      "gamesPlayed": 1,
+      "gamesWon": 1,
+      "totalScore": 35
+    }
+  }
+]
